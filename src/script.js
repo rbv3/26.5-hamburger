@@ -84,8 +84,8 @@ frontDirectionalLight.shadow.bias = - 0.004
 const sideDirectionalLight = new THREE.DirectionalLight('#ffffff', 0.5)
 sideDirectionalLight.position.set(-10, 6.5, 7)
 
-gui.add(frontDirectionalLight, 'intensity', 0, 2, 0.01).name('front lightIntensity')
-gui.add(sideDirectionalLight, 'intensity', 0, 2, 0.01).name('side lightIntensity')
+gui.add(frontDirectionalLight, 'intensity', 0, 2, 0.01).name('frontLight Intensity')
+gui.add(sideDirectionalLight, 'intensity', 0, 2, 0.01).name('sideLight Intensity')
 
 // Shadows
 sideDirectionalLight.castShadow = true
@@ -115,6 +115,8 @@ const fontLoader = new FontLoader()
 
 const matcapTexture = textureLoader.load('/textures/matcaps/1.png')
 
+let title = null
+let subTitle = null
 fontLoader.load(
     '/fonts/helvetiker_regular.typeface.json',
     (font) => {
@@ -140,8 +142,8 @@ fontLoader.load(
             matcap: matcapTexture
         });
         // textMaterial.wireframe = true
-        const title = new THREE.Mesh(titleTextGeometry, textMaterial)
-        const subTitle = new THREE.Mesh(subTitleTextGeometry, textMaterial)
+        title = new THREE.Mesh(titleTextGeometry, textMaterial)
+        subTitle = new THREE.Mesh(subTitleTextGeometry, textMaterial)
         title.position.y = 11
         subTitle.position.y = 9
         scene.add(title, subTitle)
@@ -153,9 +155,16 @@ fontLoader.load(
 /*
     Wall
 */
-const wallColorTexture = textureLoader.load('/textures/leafy_grass_4k/leafy_grass_diff_4k.jpg')
-const wallNormalTexture = textureLoader.load('/textures/leafy_grass_4k/leafy_grass_nor_gl_4k.png')
-const wallAORoughnessMetalnessTexture = textureLoader.load('/textures/leafy_grass_4k/leafy_grass_arm_4k.png')
+const wallColorTexture = textureLoader.load('/textures/concrete/concrete_wall_003_diff_1k.jpg')
+const wallNormalTexture = textureLoader.load('/textures/concrete/concrete_wall_003_nor_gl_1k.jpg')
+const wallAORoughnessMetalnessTexture = textureLoader.load('/textures/concrete/concrete_wall_003_arm_1k.jpg')
+
+wallColorTexture.rotation = Math.PI/2
+wallColorTexture.center = new THREE.Vector2(0.5, 0.5);
+wallNormalTexture.rotation = Math.PI/2
+wallNormalTexture.center = new THREE.Vector2(0.5, 0.5);
+wallAORoughnessMetalnessTexture.rotation = Math.PI/2
+wallAORoughnessMetalnessTexture.center = new THREE.Vector2(0.5, 0.5);
 
 wallColorTexture.colorSpace = THREE.SRGBColorSpace
 
@@ -164,10 +173,10 @@ const wall = new THREE.Mesh(
     new THREE.PlaneGeometry(8,8),
     new THREE.MeshStandardMaterial({
         map: wallColorTexture,
-        normalMap: wallNormalTexture,
-        aoMap: wallAORoughnessMetalnessTexture,
-        roughnessMap: wallAORoughnessMetalnessTexture,
-        metalnessMap: wallAORoughnessMetalnessTexture
+        // normalMap: wallNormalTexture,
+        // aoMap: wallAORoughnessMetalnessTexture,
+        // roughnessMap: wallAORoughnessMetalnessTexture,
+        // metalnessMap: wallAORoughnessMetalnessTexture
     })
 )
 wall.position.y = 4
@@ -193,9 +202,9 @@ scene.add(wall, sideWall)
 /*
     Floor
 */
-const floorColorTexture = textureLoader.load('/textures/coast_sand_rocks_02_4k/coast_sand_rocks_02_diff_4k.jpg')
-const floorNormalTexture = textureLoader.load('/textures/coast_sand_rocks_02_4k/coast_sand_rocks_02_nor_gl_4k.png')
-const floorAORoughnessMetalnessTexture = textureLoader.load('/textures/coast_sand_rocks_02_4k/coast_sand_rocks_02_arm_4k.png')
+const floorColorTexture = textureLoader.load('/textures/cobblestone/grassy_cobblestone_diff_1k.jpg')
+const floorNormalTexture = textureLoader.load('/textures/cobblestone/grassy_cobblestone_nor_gl_1k.jpg')
+const floorAORoughnessMetalnessTexture = textureLoader.load('/textures/cobblestone/grassy_cobblestone_arm_1k.jpg')
 
 floorColorTexture.colorSpace = THREE.SRGBColorSpace
 
@@ -215,14 +224,15 @@ scene.add(floor)
 /**
  * Models
  */
+const hamburgerGroup = new THREE.Group()
 gltfLoader.load(
     '/models/hamburger.glb',
     (gltf) =>
     {
         gltf.scene.scale.set(0.4, 0.4, 0.4)
         gltf.scene.position.set(0, 2.5, 0)
-        scene.add(gltf.scene)
-
+        hamburgerGroup.add(gltf.scene)
+        scene.add(hamburgerGroup)
         updateAllMaterials()
     }
 )
@@ -255,7 +265,7 @@ window.addEventListener('resize', () =>
  */
 // Base camera
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.set(-3, 5, 16)
+camera.position.set(-3, 5, 20)
 scene.add(camera)
 
 // Controls
@@ -296,11 +306,34 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap
 /**
  * Animate
  */
+const clock = new THREE.Clock()
+let previousTime = 0
+const titleLookAtVector = new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z);
+const subtTitleLookAtVector = new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z);
 const tick = () =>
 {
+    const elapsedTime = clock.getElapsedTime()
+    const deltaTime = elapsedTime - previousTime
+    previousTime = elapsedTime
     // Update controls
     controls.update()
 
+    // Animate Hamburger
+    hamburgerGroup.rotation.y += deltaTime
+
+    // Animate text
+    if(title && subTitle) {
+        titleLookAtVector.x += (camera.position.x - titleLookAtVector.x) * deltaTime * 0.5
+        titleLookAtVector.y += (camera.position.y - titleLookAtVector.y) * deltaTime * 0.5
+        titleLookAtVector.z += (camera.position.z - titleLookAtVector.z) * deltaTime * 0.5
+
+        subtTitleLookAtVector.x += (camera.position.x - subtTitleLookAtVector.x) * deltaTime * 4
+        subtTitleLookAtVector.y += (camera.position.y - subtTitleLookAtVector.y) * deltaTime * 4
+        subtTitleLookAtVector.z += (camera.position.z - subtTitleLookAtVector.z) * deltaTime * 4
+
+        title.lookAt(titleLookAtVector)
+        subTitle.lookAt(subtTitleLookAtVector)
+    }
     // Render
     renderer.render(scene, camera)
 
